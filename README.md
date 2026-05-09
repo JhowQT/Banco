@@ -94,9 +94,13 @@ Status atualizado para APROVADA
 
 Inserir imagem em:
 
-```txt
-/docs/diagrama-classes.png
-```
+<details>
+  <summary>📘 Banco.API - Diagrama de Classes UML</summary>
+
+  ![DIAGRAMA](https://github.com/JhowQT/Banco/issues/1)
+
+  _Figura: MER do sistema._
+</details>
 
 Exemplo de incorporação no README:
 
