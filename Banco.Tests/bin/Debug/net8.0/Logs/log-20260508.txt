@@ -1,0 +1,2 @@
+2026-05-08 21:06:45.019 -03:00 [INF] Request starting HTTP/1.1 GET http://localhost/swagger/index.html - null null
+2026-05-08 21:06:45.144 -03:00 [INF] Request finished HTTP/1.1 GET http://localhost/swagger/index.html - 200 null text/html;charset=utf-8 127.8732ms
