@@ -1,4 +1,4 @@
-````md
+
 # Banco.API — Banco Digital com Mensageria RabbitMQ
 
 Projeto desenvolvido para a disciplina de Engenharia de Software — FIAP 3ESR 2026.  
@@ -44,9 +44,8 @@ Por esse motivo, o fluxo utilizando RabbitMQ se encaixa perfeitamente no cenári
 
 Fila utilizada:
 
-```txt
 contratacao-solicitada
-````
+
 
 A equipe optou por utilizar **uma única fila central** para processamento das contratações.
 
