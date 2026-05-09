@@ -1,66 +1,690 @@
-Banco.API — Banco Digital com Mensageria RabbitMQ
+````md
+# Banco.API — Banco Digital com Mensageria RabbitMQ
 
-Projeto desenvolvido para a disciplina de Engenharia de Software — FIAP 3ESR 2026.
-O sistema simula o backend de um banco digital utilizando .NET 8, Oracle, RabbitMQ, Serilog, OpenTelemetry e testes automatizados.
+Projeto desenvolvido para a disciplina de Engenharia de Software — FIAP 3ESR 2026.  
+O sistema simula o backend de um banco digital utilizando .NET 8, Oracle, RabbitMQ, Entity Framework Core, Serilog, OpenTelemetry e testes automatizados.
 
-👨‍💻 Integrantes
-Nome	RM
-Jhonatan Quispe Torrez	RM XXXXX
-Integrante 2	RM XXXXX
-Integrante 3	RM XXXXX
-📚 Tecnologias Utilizadas
-Tecnologia	Função
-.NET 8	Runtime principal
-ASP.NET Core Web API	API REST
-Entity Framework Core	ORM
-Oracle Database	Banco de dados
-RabbitMQ	Mensageria
-Docker	Container RabbitMQ
-Serilog	Logs estruturados
-OpenTelemetry	Observabilidade
-Health Checks	Monitoramento da API
-xUnit	Testes automatizados
-Moq	Mock de testes
-WebApplicationFactory	Testes de integração
-🏦 Produto Bancário Escolhido
+---
 
-O produto implementado foi:
+# 1. Identificação
 
-EMPRÉSTIMO
+| Nome | RM |
+|---|---|
+| Jhonatan Quispe Torrez | RM XXXXX |
+| Integrante 2 | RM XXXXX |
+| Integrante 3 | RM XXXXX |
 
-A escolha foi feita porque o produto possui um fluxo muito compatível com processamento assíncrono, análise de crédito e aprovação posterior.
+---
 
-📨 Estratégia de Mensageria
+# 2. Produto Bancário Escolhido e Justificativa
 
-O projeto utiliza:
+## Produto Escolhido
+### Empréstimo
 
-UMA FILA CENTRAL
+O produto bancário implementado foi **Empréstimo**.
+
+A escolha foi feita porque esse tipo de produto possui um fluxo extremamente compatível com processamento assíncrono, análise de crédito e validação posterior.
+
+Durante uma solicitação de empréstimo normalmente existem etapas que não devem bloquear a resposta da API, como:
+
+- análise de crédito;
+- validação de cliente;
+- cálculo de risco;
+- processamento financeiro;
+- aprovação posterior.
+
+Por esse motivo, o fluxo utilizando RabbitMQ se encaixa perfeitamente no cenário proposto pela atividade.
+
+---
+
+# 3. Decisão de Modelagem de Filas
+
+## Estratégia Escolhida
+### Uma fila central de contratações
 
 Fila utilizada:
 
+```txt
 contratacao-solicitada
+````
 
-A decisão foi tomada porque:
+A equipe optou por utilizar **uma única fila central** para processamento das contratações.
 
-simplifica o gerenciamento
-facilita manutenção
-centraliza processamento
-reduz complexidade inicial
+## Justificativa
 
-O processamento ocorre de forma assíncrona:
+A escolha foi feita considerando os seguintes trade-offs:
 
-API recebe contratação
-Contratação é salva como PENDENTE
-Mensagem é enviada ao RabbitMQ
-Consumer processa
-Status muda para APROVADA
+### Vantagens
 
-Implementação baseada nos requisitos do PDF da atividade.
+* menor complexidade inicial;
+* manutenção mais simples;
+* gerenciamento centralizado;
+* menor quantidade de configurações;
+* mais fácil de debugar;
+* ideal para um único produto implementado.
 
-🧱 Arquitetura do Projeto
+### Desvantagens
 
-O projeto foi dividido em camadas:
+* menor escalabilidade futura;
+* todos os produtos compartilham o mesmo consumer;
+* necessidade de discriminator caso existam múltiplos produtos futuramente.
 
+## Fluxo Assíncrono
+
+```txt
+Cliente faz requisição
+        ↓
+API valida cliente
+        ↓
+Contratação salva como PENDENTE
+        ↓
+Mensagem publicada no RabbitMQ
+        ↓
+Consumer recebe mensagem
+        ↓
+Processamento assíncrono
+        ↓
+Status atualizado para APROVADA
+```
+
+---
+
+# 4. Diagrama de Classes
+
+## Diagrama UML
+
+Inserir imagem em:
+
+```txt
+/docs/diagrama-classes.png
+```
+
+Exemplo de incorporação no README:
+
+```md
+![Diagrama UML](docs/diagrama-classes.png)
+```
+
+---
+
+# Estrutura das Entidades
+
+## Agência
+
+Representa uma agência bancária.
+
+### Campos
+
+* Id
+* Nome
+
+### Relacionamentos
+
+* Uma agência possui vários clientes.
+
+---
+
+## Cliente (Classe Abstrata)
+
+Classe base do sistema.
+
+### Campos
+
+* Id
+* AgenciaId
+
+### Relacionamentos
+
+* Cliente pertence a uma agência;
+* Cliente possui várias contratações.
+
+### Heranças
+
+* PessoaFisica
+* PessoaJuridica
+
+---
+
+## PessoaFisica
+
+Herda de Cliente.
+
+### Campos
+
+* CPF
+* DataNascimento
+
+### Regras
+
+* CPF não pode duplicar.
+
+---
+
+## PessoaJuridica
+
+Herda de Cliente.
+
+### Campos
+
+* CNPJ
+* RazaoSocial
+
+### Regras
+
+* CNPJ não pode duplicar.
+
+---
+
+## Produto
+
+Classe abstrata base dos produtos bancários.
+
+### Campos
+
+* Id
+* Nome
+
+---
+
+## Empréstimo
+
+Herda de Produto.
+
+### Campos
+
+* Valor
+* TaxaJuros
+
+---
+
+## Contratação
+
+Representa uma contratação bancária.
+
+### Campos
+
+* Id
+* ClienteId
+* ProdutoId
+* Status
+* DataCriacao
+
+### Fluxo
+
+* cria com status `PENDENTE`;
+* publica mensagem na fila;
+* consumer processa;
+* status atualizado para `APROVADA`.
+
+---
+
+# 5. Como Rodar Localmente
+
+## Pré-requisitos
+
+Instalar:
+
+* .NET 8 SDK
+* Docker Desktop
+* Visual Studio 2022 ou VS Code
+
+---
+
+# RabbitMQ via Docker
+
+## Executar Container
+
+```bash
+docker run -d --hostname rabbit-host --name rabbitmq ^
+-p 5672:5672 ^
+-p 15672:15672 ^
+rabbitmq:3-management
+```
+
+---
+
+# Painel RabbitMQ
+
+## URL
+
+```txt
+http://localhost:15672
+```
+
+## Usuário
+
+```txt
+guest
+```
+
+## Senha
+
+```txt
+guest
+```
+
+---
+
+# Configuração Oracle
+
+## appsettings.json
+
+```json
+"ConnectionStrings": {
+  "Oracle": "User Id=SEU_RM;Password=SUA_SENHA;Data Source=oracle.fiap.com.br:1521/ORCL"
+}
+```
+
+---
+
+# Executar Projeto
+
+## 1. Clonar repositório
+
+```bash
+git clone URL_DO_REPOSITORIO
+```
+
+---
+
+## 2. Restaurar pacotes
+
+```bash
+dotnet restore
+```
+
+---
+
+## 3. Aplicar migrations
+
+```bash
+dotnet ef database update
+```
+
+---
+
+## 4. Rodar API
+
+```bash
+dotnet run
+```
+
+---
+
+# Swagger
+
+## URL
+
+```txt
+https://localhost:7262/swagger
+```
+
+---
+
+# 6. Endpoints Disponíveis
+
+# Agências
+
+## POST — Criar Agência
+
+### Endpoint
+
+```http
+POST /api/agencias
+```
+
+### Request
+
+```json
+{
+  "nome": "Agencia Paulista"
+}
+```
+
+### Response
+
+```json
+{
+  "id": 1,
+  "nome": "Agencia Paulista"
+}
+```
+
+---
+
+## GET — Buscar Todas
+
+### Endpoint
+
+```http
+GET /api/agencias
+```
+
+### Response
+
+```json
+[
+  {
+    "id": 1,
+    "nome": "Agencia Paulista"
+  }
+]
+```
+
+---
+
+## GET — Buscar Agência por ID
+
+### Endpoint
+
+```http
+GET /api/agencias/1
+```
+
+### Response
+
+```json
+{
+  "id": 1,
+  "nome": "Agencia Paulista"
+}
+```
+
+---
+
+## PUT — Atualizar Agência
+
+### Endpoint
+
+```http
+PUT /api/agencias/1
+```
+
+### Request
+
+```json
+{
+  "nome": "Agencia Atualizada"
+}
+```
+
+### Response
+
+```json
+{
+  "id": 1,
+  "nome": "Agencia Atualizada"
+}
+```
+
+---
+
+## DELETE — Deletar Agência
+
+### Endpoint
+
+```http
+DELETE /api/agencias/1
+```
+
+---
+
+# Clientes PF
+
+## POST — Criar Pessoa Física
+
+### Endpoint
+
+```http
+POST /api/clientes/pf
+```
+
+### Request
+
+```json
+{
+  "cpf": "12345678900",
+  "dataNascimento": "2000-05-10",
+  "agenciaId": 1
+}
+```
+
+### Response
+
+```json
+{
+  "id": 1,
+  "agenciaId": 1,
+  "tipo": "PF",
+  "cpf": "12345678900",
+  "dataNascimento": "2000-05-10T00:00:00"
+}
+```
+
+---
+
+# Clientes PJ
+
+## POST — Criar Pessoa Jurídica
+
+### Endpoint
+
+```http
+POST /api/clientes/pj
+```
+
+### Request
+
+```json
+{
+  "cnpj": "12345678000199",
+  "razaoSocial": "Empresa XPTO",
+  "agenciaId": 1
+}
+```
+
+### Response
+
+```json
+{
+  "id": 2,
+  "agenciaId": 1,
+  "tipo": "PJ",
+  "cnpj": "12345678000199",
+  "razaoSocial": "Empresa XPTO"
+}
+```
+
+---
+
+# Contratações
+
+## POST — Solicitar Contratação
+
+### Endpoint
+
+```http
+POST /api/contratacoes
+```
+
+### Request
+
+```json
+{
+  "clienteId": 1,
+  "produtoId": 1
+}
+```
+
+### Response Inicial
+
+```json
+{
+  "id": 1,
+  "clienteId": 1,
+  "produtoId": 1,
+  "status": "PENDENTE",
+  "dataCriacao": "2026-05-08T20:00:00"
+}
+```
+
+## Funcionamento
+
+* contratação salva como `PENDENTE`;
+* mensagem publicada no RabbitMQ;
+* processamento assíncrono;
+* consumer atualiza para `APROVADA`.
+
+---
+
+## GET — Buscar Contratação por ID
+
+### Endpoint
+
+```http
+GET /api/contratacoes/1
+```
+
+### Response Após Processamento
+
+```json
+{
+  "id": 1,
+  "clienteId": 1,
+  "produtoId": 1,
+  "status": "APROVADA",
+  "dataCriacao": "2026-05-08T20:00:00"
+}
+```
+
+---
+
+# Health Check
+
+## Endpoint
+
+```http
+GET /health
+```
+
+---
+
+# 7. Como Executar os Testes
+
+## Executar Testes
+
+```bash
+dotnet test
+```
+
+---
+
+# Resultado Esperado
+
+```txt
+Passed! 3 tests passed.
+0 failed.
+```
+
+---
+
+# Print dos Testes
+
+Adicionar imagem em:
+
+```txt
+/docs/testes-aprovados.png
+```
+
+Exemplo:
+
+```md
+![Testes](docs/testes-aprovados.png)
+```
+
+---
+
+# 8. Print do Painel RabbitMQ
+
+Adicionar imagem em:
+
+```txt
+/docs/rabbitmq-fila.png
+```
+
+A imagem deve mostrar:
+
+* fila criada;
+* mensagens processadas;
+* mensagens ACK;
+* Unacked (quando aplicável).
+
+Exemplo:
+
+```md
+![RabbitMQ](docs/rabbitmq-fila.png)
+```
+
+---
+
+# 9. Print da API Rodando no Swagger
+
+Adicionar imagem em:
+
+```txt
+/docs/swagger-contratacao.png
+```
+
+A imagem deve mostrar:
+
+* Swagger funcionando;
+* endpoint de contratação;
+* contratação com status `APROVADA`.
+
+Exemplo:
+
+```md
+![Swagger](docs/swagger-contratacao.png)
+```
+
+---
+
+# Observabilidade
+
+## Serilog
+
+Logs implementados em:
+
+* console;
+* arquivo.
+
+Pasta:
+
+```txt
+Logs/
+```
+
+---
+
+## OpenTelemetry
+
+Tracing HTTP implementado para:
+
+* requests;
+* status code;
+* tempo de execução.
+
+Exporter utilizado:
+
+```txt
+Console
+```
+
+---
+
+# Estrutura do Projeto
+
+```txt
 Banco.API
 │
 ├── Controllers
@@ -78,354 +702,28 @@ Banco.API
 │
 ├── BackgroundServices
 │
+├── Tests
+│
 └── Migrations
-📌 Modelagem de Objetos
+```
 
-A modelagem segue exatamente os requisitos da atividade.
+---
 
-🏢 Agencia
-
-Representa a agência bancária.
-
-Campos:
-
-Id
-Nome
-
-Relacionamentos:
-
-Uma agência possui vários clientes
-
-👤 Cliente (Classe Abstrata)
-
-Classe base do sistema.
-
-Campos:
-
-Id
-AgenciaId
-
-Relacionamentos:
-
-Cliente pertence a uma agência
-Cliente possui várias contratações
-
-Heranças:
-
-PessoaFisica
-PessoaJuridica
-
-👨 PessoaFisica
-
-Herda de Cliente.
-
-Campos:
-
-CPF
-DataNascimento
-
-Validações:
-
-CPF não pode duplicar
-🏢 PessoaJuridica
-
-Herda de Cliente.
-
-Campos:
-
-CNPJ
-RazaoSocial
-
-Validações:
-
-CNPJ não pode duplicar
-💰 Produto
-
-Classe abstrata base dos produtos bancários.
-
-Campos:
-
-Id
-Nome
-
-💵 Emprestimo
-
-Herda de Produto.
-
-Campos:
-
-Valor
-TaxaJuros
-
-📄 Contratacao
-
-Representa a contratação de um produto bancário.
-
-Campos:
-
-Id
-ClienteId
-ProdutoId
-Status
-DataCriacao
-
-Fluxo:
-
-Cria PENDENTE
-Publica na fila
-Consumer processa
-Atualiza para APROVADA
-🔄 Fluxo Completo da Contratação
-Cliente faz requisição
-        ↓
-API valida cliente
-        ↓
-Contratação salva como PENDENTE
-        ↓
-Mensagem enviada ao RabbitMQ
-        ↓
-Consumer recebe mensagem
-        ↓
-Processamento assíncrono
-        ↓
-Status atualizado para APROVADA
-🐇 RabbitMQ
-
-O projeto utiliza:
-
-RabbitMQ Publisher
-RabbitMQ Consumer
-ACK manual
-fila persistente
-
-O Consumer roda em:
-
-BackgroundService
-
-🩺 Health Check
-
-Endpoint:
-
-GET /health
-
-Valida:
-
-API funcionando
-conexão Oracle ativa
-
-Implementado utilizando:
-
-AddDbContextCheck<AppDbContext>
-
-📊 Observabilidade
-✅ Serilog
-
-Logs:
-
-console
-arquivo
-
-Pasta:
-
-Logs/
-✅ OpenTelemetry
-
-Tracing HTTP:
-
-requests
-status code
-tempo de execução
-
-Exporter:
-
-Console
-🧪 Testes Automatizados
-
-O projeto possui:
-
-✅ Testes Unitários
-CPF duplicado
-Agência inexistente
-✅ Testes de Integração
-acesso Swagger
-WebApplicationFactory
-🐳 Como Rodar o RabbitMQ no Docker
-Executar container
-docker run -d --hostname rabbit-host --name rabbitmq ^
--p 5672:5672 ^
--p 15672:15672 ^
-rabbitmq:3-management
-🔑 Acessar painel RabbitMQ
-
-URL:
-
-http://localhost:15672
-
-Usuário:
-
-guest
-
-Senha:
-
-guest
-🗄️ Banco Oracle
-
-Connection String utilizada:
-
-"ConnectionStrings": {
-  "Oracle": "User Id=SEU_RM;Password=SUA_SENHA;Data Source=oracle.fiap.com.br:1521/ORCL"
-}
-▶️ Como Rodar o Projeto
-1. Clonar repositório
-git clone URL_DO_REPOSITORIO
-2. Restaurar pacotes
-dotnet restore
-3. Aplicar migrations
-dotnet ef database update
-4. Rodar API
-dotnet run
-🌐 Swagger
-
-URL:
-
-https://localhost:7262/swagger
-📌 Endpoints Disponíveis
-
-Todos os endpoints seguem os requisitos mínimos da atividade.
-
-🏢 Agências
-GET — Buscar Todas
-GET /api/agencias
-GET — Buscar por ID
-GET /api/agencias/{id}
-
-Exemplo:
-
-GET /api/agencias/1
-POST — Criar Agência
-POST /api/agencias
-
-JSON:
-
-{
-  "nome": "Agencia Paulista"
-}
-PUT — Atualizar Agência
-PUT /api/agencias/{id}
-
-JSON:
-
-{
-  "nome": "Agencia Atualizada"
-}
-DELETE — Deletar Agência
-DELETE /api/agencias/{id}
-👤 Clientes PF
-POST — Criar Pessoa Física
-POST /api/clientes/pf
-
-JSON:
-
-{
-  "cpf": "12345678900",
-  "dataNascimento": "2000-05-10",
-  "agenciaId": 1
-}
-PUT — Atualizar PF
-PUT /api/clientes/pf/{id}
-
-JSON:
-
-{
-  "cpf": "99999999999",
-  "dataNascimento": "1999-10-10",
-  "agenciaId": 1
-}
-🏢 Clientes PJ
-POST — Criar Pessoa Jurídica
-POST /api/clientes/pj
-
-JSON:
-
-{
-  "cnpj": "12345678000199",
-  "razaoSocial": "Empresa XPTO",
-  "agenciaId": 1
-}
-PUT — Atualizar PJ
-PUT /api/clientes/pj/{id}
-
-JSON:
-
-{
-  "cnpj": "99999999000199",
-  "razaoSocial": "Nova Empresa",
-  "agenciaId": 1
-}
-👥 Clientes Gerais
-GET — Buscar Todos
-GET /api/clientes
-GET — Buscar por ID
-GET /api/clientes/{id}
-DELETE — Deletar Cliente
-DELETE /api/clientes/{id}
-📄 Contratações
-GET — Buscar Todas
-GET /api/contratacoes
-GET — Buscar por ID
-GET /api/contratacoes/{id}
-POST — Criar Contratação
-POST /api/contratacoes
-
-JSON:
-
-{
-  "clienteId": 1,
-  "produtoId": 1
-}
-
-Resultado:
-
-status inicial = PENDENTE
-mensagem publicada no RabbitMQ
-processamento assíncrono
-PUT — Atualizar Contratação
-PUT /api/contratacoes/{id}
-
-JSON:
-
-{
-  "clienteId": 1,
-  "produtoId": 1,
-  "status": "APROVADA"
-}
-DELETE — Deletar Contratação
-DELETE /api/contratacoes/{id}
-🧪 Como Executar os Testes
-Visual Studio
-Teste → Executar Todos os Testes
-Terminal
-dotnet test
-✅ Resultado Esperado
-3 testes aprovados
-0 falhas
-📸 Prints Obrigatórios
-
-Adicionar no repositório:
-
-Swagger funcionando
-RabbitMQ processando mensagens
-Health Check Healthy
-Logs do Serilog
-OpenTelemetry no console
-Testes verdes
-📌 Considerações Finais
+# Considerações Finais
 
 O projeto implementa:
 
-arquitetura em camadas
-mensageria assíncrona
-observabilidade
-testes automatizados
-persistência Oracle
-boas práticas REST
+* arquitetura em camadas;
+* mensageria assíncrona;
+* RabbitMQ com ACK manual;
+* persistência Oracle;
+* Entity Framework Core;
+* testes automatizados;
+* observabilidade;
+* Health Checks;
+* boas práticas REST.
+
+A solução foi desenvolvida conforme os requisitos obrigatórios definidos no enunciado da atividade.
+
+```
+```
