@@ -92,7 +92,6 @@ Status atualizado para APROVADA
 
 ## Diagrama UML
 
-Inserir imagem em:
 
 <details>
   <summary>📘 Banco.API - Diagrama de Classes UML</summary>
@@ -101,12 +100,6 @@ Inserir imagem em:
 
   _Figura: MER do sistema._
 </details>
-
-Exemplo de incorporação no README:
-
-```md
-![Diagrama UML](docs/diagrama-classes.png)
-```
 
 ---
 
