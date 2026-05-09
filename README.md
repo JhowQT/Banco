@@ -97,7 +97,7 @@ Inserir imagem em:
 <details>
   <summary>📘 Banco.API - Diagrama de Classes UML</summary>
 
-  ![DIAGRAMA](https://github.com/JhowQT/Banco/issues/1)
+  ![DIAGRAMA](https://github.com/JhowQT/Banco/issues/1#issue-4410403746)
 
   _Figura: MER do sistema._
 </details>
