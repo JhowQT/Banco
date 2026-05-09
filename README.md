@@ -10,9 +10,9 @@ O sistema simula o backend de um banco digital utilizando .NET 8, Oracle, Rabbit
 
 | Nome | RM |
 |---|---|
-| Jhonatan Quispe Torrez | RM XXXXX |
-| Integrante 2 | RM XXXXX |
-| Integrante 3 | RM XXXXX |
+| Jhonatan Quispe Torrez | RM506060 |
+| Julia Damasceno Busso | RM560293 |
+| Gabriel Gomes Cardoso | RM559597 |
 
 ---
 
